@@ -1,6 +1,7 @@
 package net.anotheria.moskito.core.threshold;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.anotheria.moskito.core.config.MoskitoConfiguration;
 import net.anotheria.moskito.core.config.MoskitoConfigurationHolder;
 import net.anotheria.moskito.core.config.thresholds.GuardConfig;
 import net.anotheria.moskito.core.config.thresholds.ThresholdConfig;
@@ -40,6 +41,11 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 	 */
 	private static ThresholdRepository<? extends IStats> INSTANCE = new ThresholdRepository<>();
 
+	/**
+	 * Configuration.
+	 */
+	private MoskitoConfiguration configuration;
+
 
 	/**
 	 * Private constructor.
@@ -57,12 +63,6 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 	}
 
 	protected boolean tie(Threshold threshold, IStatsProducer<? extends IStats> producer){
-
-		if (producer instanceof CustomThresholdProvider){
-			//tie to producer instead of stats.
-			threshold.tieToProducer((CustomThresholdProvider)producer);
-			return true;
-		}
 
 		ThresholdDefinition definition = threshold.getDefinition();
 		IStats target = null;
@@ -138,6 +138,36 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 
 	}
 
+	public Threshold createCustomThreshold(String name, CustomThresholdProvider provider, OnDemandStatsProducer<S> producer){
+		if (name==null)
+			throw new IllegalArgumentException("CustomThreshold name can not be null");
+		ThresholdDefinition definition = new ThresholdDefinition();
+		definition.setName(name);
+		definition.setIntervalName("1m");
+		definition.setCustom(true);
+		definition.setProducerName(producer.getProducerId());
+		
+		Threshold threshold = new Threshold(definition);
+		threshold.tieToProvider(provider);
+
+		addTieable(threshold);
+		attachToListener(threshold);
+
+
+		try {
+			// Construct the ObjectName for the MBean we will register
+			String mBeanName = createName(name);
+			MBeanUtil.getInstance().registerMBean(threshold, mBeanName, true);
+		} catch (MalformedObjectNameException | NotCompliantMBeanException | MBeanRegistrationException e) {
+			log.warn("can't subscribe threshold to jmx", e);
+		} catch(AccessControlException e){
+			log.warn("can't create jmx bean due to access control problems", e);
+		}
+
+		return threshold;
+
+	}
+
 	public ExtendedThresholdStatus getExtendedWorstStatus(List<String> includedNames){
 
 		ThresholdStatus status = (includedNames == null || includedNames.size()==0) ?
@@ -178,10 +208,19 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 	 * @return the worst detected threshold status.
 	 */
 	public ThresholdStatus getWorstStatus(){
+
+		if (configuration.getKillSwitch().disableMetricCollection())
+			return ThresholdStatus.OFF;
+
 		ThresholdStatus ret = ThresholdStatus.GREEN;
 		for (Threshold t : getThresholds()){
-			if (t.getStatus().overrules(ret))
-				ret = t.getStatus();
+			if (t.getStatus()==null){
+				log.error("Threshold "+t+" has status NULL!");
+			}else{
+				if (t.getStatus().overrules(ret)) {
+					ret = t.getStatus();
+				}
+			}
 		}
 		return ret;
 	}
@@ -199,6 +238,9 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 	 * @return
 	 */
 	public ThresholdStatus getWorstStatus(List<String> names){
+		if (configuration.getKillSwitch().disableMetricCollection())
+			return ThresholdStatus.OFF;
+
 		ThresholdStatus ret = ThresholdStatus.GREEN;
 		for (Threshold t : getThresholds()){
 			if (names.indexOf(t.getName())==-1)
@@ -215,6 +257,10 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 	 * @return
 	 */
 	public ThresholdStatus getWorstStatusWithout(List<String> names){
+
+		if (configuration.getKillSwitch().disableMetricCollection())
+			return ThresholdStatus.OFF;
+
 		ThresholdStatus ret = ThresholdStatus.GREEN;
 		for (Threshold t : getThresholds()){
 			if (names.indexOf(t.getName())!=-1)
@@ -245,7 +291,8 @@ public class ThresholdRepository<S extends IStats> extends TieableRepository<Thr
 	 * Reads the config and creates configured thresholds. For now this method is only executed on startup.
 	 */
 	private void readConfig(){
-		ThresholdsConfig config = MoskitoConfigurationHolder.getConfiguration().getThresholdsConfig();
+		configuration = MoskitoConfigurationHolder.getConfiguration();
+		ThresholdsConfig config = configuration.getThresholdsConfig();
 		ThresholdConfig[] tcs = config.getThresholds();
 		if (tcs!=null && tcs.length>0){
 			for (ThresholdConfig tc  : tcs){

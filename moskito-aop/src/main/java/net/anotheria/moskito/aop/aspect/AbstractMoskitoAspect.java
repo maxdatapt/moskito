@@ -2,11 +2,11 @@ package net.anotheria.moskito.aop.aspect;
 
 import net.anotheria.moskito.aop.annotation.Accumulate;
 import net.anotheria.moskito.aop.annotation.Accumulates;
+import net.anotheria.moskito.aop.annotation.StatName;
 import net.anotheria.moskito.aop.annotation.withsubclasses.AccumulateWithSubClasses;
 import net.anotheria.moskito.aop.annotation.withsubclasses.AccumulatesWithSubClasses;
 import net.anotheria.moskito.aop.aspect.support.AccumulatorUtil;
 import net.anotheria.moskito.aop.util.MoskitoUtils;
-import net.anotheria.moskito.core.annotations.StatName;
 import net.anotheria.moskito.core.dynamic.IOnDemandStatsFactory;
 import net.anotheria.moskito.core.dynamic.OnDemandStatsProducer;
 import net.anotheria.moskito.core.logging.DefaultStatsLogger;
@@ -16,6 +16,8 @@ import net.anotheria.moskito.core.predefined.AbstractStatsFactory;
 import net.anotheria.moskito.core.producers.IStats;
 import net.anotheria.moskito.core.registry.ProducerRegistryFactory;
 import net.anotheria.moskito.core.stats.Interval;
+import net.anotheria.moskito.core.threshold.CustomThresholdProvider;
+import net.anotheria.moskito.core.threshold.ThresholdRepository;
 import net.anotheria.moskito.core.util.annotation.AnnotationUtils;
 import net.anotheria.util.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -25,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -110,6 +113,8 @@ public class AbstractMoskitoAspect<S extends IStats> {
 
 		producer = new OnDemandStatsProducer<>(producerId, getCategory(aCategory), getSubsystem(aSubsystem), factory);
 		producer.setTracingSupported(tracingSupported);
+		//all on aop demand producers support logging
+		producer.setLoggingSupported(true);
 		final OnDemandStatsProducer<S> p = producers.putIfAbsent(producerId, producer);
 		if (p != null)
 			return p;
@@ -123,6 +128,15 @@ public class AbstractMoskitoAspect<S extends IStats> {
 			createMethodLevelAccumulators(producer, method);
 		if (attachDefaultStatsLoggers)
 			attachLoggers(producer, factory);
+
+		Class<?>[] intrfaces = producerClass.getInterfaces();
+		for (Class<?> intrface : intrfaces){
+			if (intrface.getName().equals(CustomThresholdProvider.class.getName())){
+				setupCustomThresholds((CustomThresholdProvider)pjp.getTarget(), producer);
+			}
+		}
+
+
 
 		return producer;
 
@@ -141,7 +155,9 @@ public class AbstractMoskitoAspect<S extends IStats> {
 		}
 
 		if (signature instanceof MethodSignature) {
-			return AnnotationUtils.getMethodStatName(((MethodSignature) signature).getMethod());
+			Method method = ((MethodSignature) signature).getMethod();
+			StatName statName = method.getAnnotation(StatName.class);
+			return statName == null ? method.getName() : statName.value();
 		}
 
 		return signature.getName();
@@ -309,6 +325,17 @@ public class AbstractMoskitoAspect<S extends IStats> {
 	 */
 	public void reset() {
 		producers.clear();
+	}
+
+
+	private void setupCustomThresholds(CustomThresholdProvider customThresholdProvider, OnDemandStatsProducer<S> producer){
+		List<String> thresholdNames = customThresholdProvider.getCustomThresholdNames();
+		ThresholdRepository repository = ThresholdRepository.getInstance();
+		for (String name :thresholdNames){
+			repository.createCustomThreshold(name, customThresholdProvider, producer);
+
+		}
+
 	}
 
 }

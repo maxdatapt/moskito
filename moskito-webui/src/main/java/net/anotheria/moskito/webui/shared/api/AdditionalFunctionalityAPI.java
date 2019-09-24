@@ -3,6 +3,7 @@ package net.anotheria.moskito.webui.shared.api;
 import net.anotheria.anoplass.api.API;
 import net.anotheria.anoplass.api.APIException;
 import net.anotheria.anoprise.metafactory.Service;
+import net.anotheria.moskito.core.config.KillSwitchConfiguration;
 import net.anotheria.moskito.core.config.MoskitoConfiguration;
 import org.distributeme.annotation.DistributeMe;
 import org.distributeme.annotation.FailBy;
@@ -17,7 +18,7 @@ import java.util.List;
  * @author lrosenberg
  * @since 24.03.14 22:52
  */
-@DistributeMe(agentsSupport = false)
+@DistributeMe(agentsSupport = false, moskitoSupport=false)
 @SupportService
 @FailBy(strategyClass=RetryCallOnce.class)
 public interface AdditionalFunctionalityAPI extends API, Service{
@@ -79,4 +80,19 @@ public interface AdditionalFunctionalityAPI extends API, Service{
 	 */
 	List<CaughtErrorAO> getCaughtErrorsByExceptionName(String catcherName, String catcherType) throws APIException;
 
+
+	/**
+	 * Update Kill Switch configuration.
+	 * @param killSwitchConfiguration configuration to set
+	 * @throws APIException
+	 */
+	void setKillSwitchConfiguration(KillSwitchConfiguration killSwitchConfiguration) throws APIException;
+
+	/**
+	 * Returns system status.
+	 *
+	 * @return {@link SystemStatusAO}
+	 * @throws APIException on errors
+	 */
+	SystemStatusAO getSystemStatus() throws APIException;
 }

@@ -5,6 +5,8 @@ import net.anotheria.moskito.core.calltrace.RunningTraceContainer;
 import net.anotheria.moskito.core.calltrace.TraceStep;
 import net.anotheria.moskito.core.calltrace.TracedCall;
 import net.anotheria.moskito.core.calltrace.TracingUtil;
+import net.anotheria.moskito.core.config.MoskitoConfiguration;
+import net.anotheria.moskito.core.config.MoskitoConfigurationHolder;
 import net.anotheria.moskito.core.context.MoSKitoContext;
 import net.anotheria.moskito.core.dynamic.OnDemandStatsProducer;
 import net.anotheria.moskito.core.journey.Journey;
@@ -15,6 +17,7 @@ import net.anotheria.moskito.core.tracer.Trace;
 import net.anotheria.moskito.core.tracer.TracerRepository;
 import net.anotheria.moskito.core.tracer.Tracers;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.reflect.MethodSignature;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -33,8 +36,21 @@ public class MonitoringBaseAspect extends AbstractMoskitoAspect<ServiceStats>{
      */
     protected static final ThreadLocal<String> lastProducerId = new ThreadLocal<>();
 
+	/**
+	 * Global configuration.
+	 */
+	protected MoskitoConfiguration moskitoConfiguration = MoskitoConfigurationHolder.getConfiguration();
+
     /*  */
     protected Object doProfiling(ProceedingJoinPoint pjp, String aProducerId, String aSubsystem, String aCategory) throws Throwable {
+
+    	//check if kill switch is active, return if so.
+    	if (moskitoConfiguration.getKillSwitch().disableMetricCollection())
+			return pjp.proceed();
+
+    	//check if this a synthetic method like a switch or lambda method.
+    	if (((MethodSignature)pjp.getSignature()).getMethod().isSynthetic())
+			return pjp.proceed();
 
         OnDemandStatsProducer<ServiceStats> producer = getProducer(pjp, aProducerId, aCategory, aSubsystem, false, FACTORY, true);
         String producerId = producer.getProducerId();

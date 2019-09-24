@@ -1815,7 +1815,7 @@ Heat map
 }
 
 .footer-info {
-    margin-top: 8px;
+    margin-bottom: 8px;
 }
 
 #olark-box-wrapper {
@@ -2149,4 +2149,46 @@ Heat map
     display: block;
     font-weight: 600;
     margin-top: 10px;
+}
+
+.align-center-flex {
+    display: flex;
+    align-items: center;
+}
+
+.alert.alert-full-width {
+    position: relative;
+    width: 100%;
+    top: 0;
+    margin-bottom: 1px;
+    box-shadow: none;
+}
+
+.alert.alert-noanimation {
+    -moz-animation: alert 0s alternate;
+    -webkit-animation: alert 0s alternate;
+    -ms-animation: alert 0s alternate;
+}
+
+.alert.alert-nobradius {
+    border-radius: 0 !important;
+}
+
+.donate-btn {
+    background: #ffc439;
+    color: #000000;
+    text-transform: none;
+    font-size: 16px;
+    height: 48px;
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.donate-btn:hover {
+    background: #ffc439;
+    color: #000000;
+    opacity: 0.8;
 }

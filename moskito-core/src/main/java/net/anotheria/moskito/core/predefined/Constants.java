@@ -34,7 +34,7 @@
  */	
 package net.anotheria.moskito.core.predefined;
 
-import net.anotheria.moskito.core.stats.DefaultIntervals;
+import net.anotheria.moskito.core.config.MoskitoConfigurationHolder;
 import net.anotheria.moskito.core.stats.Interval;
 
 /**
@@ -45,19 +45,6 @@ import net.anotheria.moskito.core.stats.Interval;
 public class Constants {
 	
 	/**
-	 * Default intervals, used if you don't specify anything special. As for now, the default intervals are one minute, 5 minutes, 15 minutes, one hour and one day.
-	 */
-	private static final Interval[] DEFAULT_INTERVALS = {
-		DefaultIntervals.ONE_MINUTE, 
-		DefaultIntervals.FIVE_MINUTES,
-		DefaultIntervals.FIFTEEN_MINUTES,
-		DefaultIntervals.ONE_HOUR,
-		DefaultIntervals.TWELVE_HOURS,
-		DefaultIntervals.ONE_DAY,
-		DefaultIntervals.DEF_SNAPSHOT,
-	};
-	
-	/**
 	 * Min time value.
 	 */
 	public static final long MIN_TIME_DEFAULT = Long.MAX_VALUE;
@@ -65,16 +52,54 @@ public class Constants {
 	 * Max time value.
 	 */
 	public static final long MAX_TIME_DEFAULT = Long.MIN_VALUE;
-	
+
+	/**
+	 * an interval of one minute
+	 */
+	public static final String INTERVAL_ONE_MINUTE = "1m";
+	/**
+	 * an interval of five minutes
+	 */
+	public static final String INTERVAL_FIVE_MINUTES = "5m";
+	/**
+	 * an interval of fifteen minutes
+	 */
+	public static final String INTERVAL_FIFTEEN_MINUTES = "15m";
+	/**
+	 * an interval of one hour
+	 */
+	public static final String INTERVAL_ONE_HOUR = "1h";
+	/**
+	 * an interval of one hour
+	 */
+	public static final String INTERVAL_TWELVE_HOURS = "12h";
+	/**
+	 * an interval of one day
+	 */
+	public static final String INTERVAL_ONE_DAY = "1d";
+
+
 	/**
 	 * Average time value.
 	 */
 	public static final long AVERAGE_TIME_DEFAULT = -1;
-	
+
+	/**
+	 * Returns currently configured intervals. Although this is not a constant anymore, since the intervals can be
+	 * configured since 2.9.1 we still leave this method here, because it is used at far too many locations.
+	 * However, the intervals are looked up in the configuration now.
+	 * @return currently configured intervals.
+	 */
 	public static final Interval[] getDefaultIntervals(){
-		return DEFAULT_INTERVALS.clone();
+		return MoskitoConfigurationHolder.getConfiguration().getConfiguredIntervals();
 	}
-	
-	
+
+	/**
+	 * All intervals with this prefix are considered as snapshot intervals, meaning that they are not updated automatically.
+	 */
+	public static final String PREFIX_SNAPSHOT_INTERVAL = "snapshot";
+
+
+
 
 }
